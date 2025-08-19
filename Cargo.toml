@@ -1,10 +1,17 @@
 [package]
-  authors    = ["Ike Kurghinyan <info@dempfi.com>"]
+  authors     = ["Ike Kurghinyan <info@dempfi.com>"]
+  categories  = ["embedded", "no-std"]
+  description = "RGBA support for embedded-graphics with fast framebuffers"
+  name        = "embedded-rgba"
+  version     = "0.1.1"
+
   edition    = "2024"
-  name       = "embedded-rgba"
+  homepage   = "https://github.com/dempfi/embedded-rgba"
+  keywords   = ["embedded-graphics", "graphics", "embedded"]
+  license    = "MIT OR Apache-2.0"
   readme     = "README.md"
   repository = "https://github.com/dempfi/embedded-rgba"
-  version    = "0.1.0"
+
 
 [dependencies]
   embedded-graphics-core = "0.4.0"

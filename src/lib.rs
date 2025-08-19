@@ -1,3 +1,5 @@
+#![no_std]
+
 mod alpha;
 mod canvas;
 mod framebuffer;
