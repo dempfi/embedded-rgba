@@ -1,0 +1,10 @@
+[package]
+  authors    = ["Ike Kurghinyan <info@dempfi.com>"]
+  edition    = "2024"
+  name       = "embedded-rgba"
+  readme     = "README.md"
+  repository = "https://github.com/dempfi/embedded-rgba"
+  version    = "0.1.0"
+
+[dependencies]
+  embedded-graphics-core = "0.4.0"
