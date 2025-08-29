@@ -9,41 +9,42 @@ pub trait BufferStrategy: DrawTarget {
     -> Result<(), T::Error>;
 }
 
-pub trait HasFramebuffer<C, const N: usize, const W: usize, const H: usize>
+pub trait HasFramebuffer<C, const N: usize>
 where
     C: RgbColor,
 {
-    fn current_mut(&mut self) -> &mut Framebuffer<C, N, W, H>;
+    fn current_mut(&mut self) -> &mut Framebuffer<C, N>;
 }
 
 /// Double buffering: draw into `current`, compare/prepare against `reference`, then swap on flush.
-pub struct DoubleBuffer<C, const N: usize, const W: usize, const H: usize>
+pub struct DoubleBuffer<C, const N: usize>
 where
     C: RgbColor,
 {
-    current: Framebuffer<C, N, W, H>,
-    reference: Framebuffer<C, N, W, H>,
+    current: Framebuffer<C, N>,
+    reference: Framebuffer<C, N>,
 }
 
-impl<C, const N: usize, const W: usize, const H: usize> DoubleBuffer<C, N, W, H>
+impl<C, const N: usize> DoubleBuffer<C, N>
 where
     C: RgbColor,
 {
-    pub fn new() -> Self {
+    pub fn new(width: u32, height: u32) -> Self {
         Self {
-            current: Framebuffer::new(),
-            reference: Framebuffer::new(),
+            current: Framebuffer::new(width, height),
+            reference: Framebuffer::new(width, height),
         }
     }
 }
 
-impl<C, const N: usize, const W: usize, const H: usize> DrawTarget for DoubleBuffer<C, N, W, H>
+impl<C, const N: usize> DrawTarget for DoubleBuffer<C, N>
 where
     C: RgbColor,
 {
     type Color = C;
     type Error = Infallible;
 
+    #[inline(always)]
     fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
     where
         I: IntoIterator<Item = Pixel<Self::Color>>,
@@ -51,6 +52,7 @@ where
         self.current.draw_iter(pixels)
     }
 
+    #[inline(always)]
     fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), Self::Error>
     where
         I: IntoIterator<Item = Self::Color>,
@@ -58,26 +60,27 @@ where
         self.current.fill_contiguous(area, colors)
     }
 
+    #[inline(always)]
     fn fill_solid(&mut self, area: &Rectangle, color: C) -> Result<(), Self::Error> {
         self.current.fill_solid(area, color)
     }
 
+    #[inline(always)]
     fn clear(&mut self, color: C) -> Result<(), Self::Error> {
         self.current.clear(color)
     }
 }
 
-impl<C, const N: usize, const W: usize, const H: usize> OriginDimensions
-    for DoubleBuffer<C, N, W, H>
+impl<C, const N: usize> OriginDimensions for DoubleBuffer<C, N>
 where
     C: RgbColor,
 {
     fn size(&self) -> Size {
-        Size::new(W as u32, H as u32)
+        self.current.size()
     }
 }
 
-impl<C, const N: usize, const W: usize, const H: usize> BufferStrategy for DoubleBuffer<C, N, W, H>
+impl<C, const N: usize> BufferStrategy for DoubleBuffer<C, N>
 where
     C: RgbColor,
 {
@@ -85,43 +88,42 @@ where
     where
         T: DrawTarget<Color = Self::Color>,
     {
-        let rect = Rectangle::new(Point::zero(), Size::new(W as u32, H as u32));
-        target.fill_contiguous(&rect, self.current.iter_colors())?;
+        target.fill_contiguous(&target.bounding_box(), self.current.iter_colors())?;
         core::mem::swap(&mut self.reference, &mut self.current);
         Ok(())
     }
 }
 
-impl<C, const N: usize, const W: usize, const H: usize> HasFramebuffer<C, N, W, H>
-    for DoubleBuffer<C, N, W, H>
+impl<C, const N: usize> HasFramebuffer<C, N> for DoubleBuffer<C, N>
 where
     C: RgbColor,
 {
-    fn current_mut(&mut self) -> &mut Framebuffer<C, N, W, H> {
+    #[inline(always)]
+    fn current_mut(&mut self) -> &mut Framebuffer<C, N> {
         &mut self.current
     }
 }
 
 /// Single buffering: only one framebuffer; flush pushes it to the target.
-pub struct SingleBuffer<C, const N: usize, const W: usize, const H: usize>
+pub struct SingleBuffer<C, const N: usize>
 where
     C: RgbColor,
 {
-    current: Framebuffer<C, N, W, H>,
+    current: Framebuffer<C, N>,
 }
 
-impl<C, const N: usize, const W: usize, const H: usize> SingleBuffer<C, N, W, H>
+impl<C, const N: usize> SingleBuffer<C, N>
 where
     C: RgbColor,
 {
-    pub fn new() -> Self {
+    pub fn new(width: u32, height: u32) -> Self {
         Self {
-            current: Framebuffer::new(),
+            current: Framebuffer::new(width, height),
         }
     }
 }
 
-impl<C, const N: usize, const W: usize, const H: usize> BufferStrategy for SingleBuffer<C, N, W, H>
+impl<C, const N: usize> BufferStrategy for SingleBuffer<C, N>
 where
     C: RgbColor,
 {
@@ -129,18 +131,18 @@ where
     where
         T: DrawTarget<Color = Self::Color>,
     {
-        let rect = Rectangle::new(Point::zero(), Size::new(W as u32, H as u32));
-        target.fill_contiguous(&rect, self.current.iter_colors())
+        target.fill_contiguous(&target.bounding_box(), self.current.iter_colors())
     }
 }
 
-impl<C, const N: usize, const W: usize, const H: usize> DrawTarget for SingleBuffer<C, N, W, H>
+impl<C, const N: usize> DrawTarget for SingleBuffer<C, N>
 where
     C: RgbColor,
 {
     type Color = C;
     type Error = Infallible;
 
+    #[inline(always)]
     fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
     where
         I: IntoIterator<Item = Pixel<Self::Color>>,
@@ -148,6 +150,7 @@ where
         self.current.draw_iter(pixels)
     }
 
+    #[inline(always)]
     fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), Self::Error>
     where
         I: IntoIterator<Item = Self::Color>,
@@ -155,31 +158,31 @@ where
         self.current.fill_contiguous(area, colors)
     }
 
+    #[inline(always)]
     fn fill_solid(&mut self, area: &Rectangle, color: C) -> Result<(), Self::Error> {
         self.current.fill_solid(area, color)
     }
 
+    #[inline(always)]
     fn clear(&mut self, color: C) -> Result<(), Self::Error> {
         self.current.clear(color)
     }
 }
 
-impl<C, const N: usize, const W: usize, const H: usize> OriginDimensions
-    for SingleBuffer<C, N, W, H>
+impl<C, const N: usize> OriginDimensions for SingleBuffer<C, N>
 where
     C: RgbColor,
 {
     fn size(&self) -> Size {
-        Size::new(W as u32, H as u32)
+        self.current.size()
     }
 }
 
-impl<C, const N: usize, const W: usize, const H: usize> HasFramebuffer<C, N, W, H>
-    for SingleBuffer<C, N, W, H>
+impl<C, const N: usize> HasFramebuffer<C, N> for SingleBuffer<C, N>
 where
     C: RgbColor,
 {
-    fn current_mut(&mut self) -> &mut Framebuffer<C, N, W, H> {
+    fn current_mut(&mut self) -> &mut Framebuffer<C, N> {
         &mut self.current
     }
 }
@@ -203,7 +206,6 @@ where
         Self { strategy, target }
     }
 
-    /// Flush via the strategy.
     pub fn flush(&mut self) -> Result<(), T::Error> {
         self.strategy.flush(self.target)
     }
@@ -219,25 +221,25 @@ where
     }
 }
 
-impl<'a, T, C, const N: usize, const W: usize, const H: usize>
-    Canvas<'a, T, DoubleBuffer<C, N, W, H>>
+impl<'a, T, C, const N: usize> Canvas<'a, T, DoubleBuffer<C, N>>
 where
     C: RgbColor,
     T: DrawTarget<Color = C>,
 {
     pub fn double_buffered(target: &'a mut T) -> Self {
-        Self::with_strategy(target, DoubleBuffer::new())
+        let size = target.bounding_box().size;
+        Self::with_strategy(target, DoubleBuffer::new(size.width, size.height))
     }
 }
 
-impl<'a, T, C, const N: usize, const W: usize, const H: usize>
-    Canvas<'a, T, SingleBuffer<C, N, W, H>>
+impl<'a, T, C, const N: usize> Canvas<'a, T, SingleBuffer<C, N>>
 where
     C: RgbColor,
     T: DrawTarget<Color = C>,
 {
     pub fn single_buffered(target: &'a mut T) -> Self {
-        Self::with_strategy(target, SingleBuffer::new())
+        let size = target.bounding_box().size;
+        Self::with_strategy(target, SingleBuffer::new(size.width, size.height))
     }
 }
 
@@ -248,11 +250,9 @@ where
     T::Color: RgbColor,
     Rgba<S::Color>: Blend<S::Color>,
 {
-    pub fn alpha<const N: usize, const W: usize, const H: usize>(
-        &mut self,
-    ) -> AlphaCanvas<'_, S::Color, N, W, H>
+    pub fn alpha<const N: usize>(&mut self) -> AlphaCanvas<'_, S::Color, N>
     where
-        S: HasFramebuffer<S::Color, N, W, H>,
+        S: HasFramebuffer<S::Color, N>,
     {
         AlphaCanvas::new(self.strategy.current_mut())
     }
@@ -266,6 +266,7 @@ where
     type Error = S::Error;
     type Color = S::Color;
 
+    #[inline(always)]
     fn draw_iter<I>(&mut self, pixels: I) -> Result<(), S::Error>
     where
         I: IntoIterator<Item = Pixel<Self::Color>>,
@@ -273,6 +274,7 @@ where
         self.strategy.draw_iter(pixels)
     }
 
+    #[inline(always)]
     fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), S::Error>
     where
         I: IntoIterator<Item = Self::Color>,
@@ -280,10 +282,12 @@ where
         self.strategy.fill_contiguous(area, colors)
     }
 
+    #[inline(always)]
     fn fill_solid(&mut self, area: &Rectangle, color: Self::Color) -> Result<(), S::Error> {
         self.strategy.fill_solid(area, color)
     }
 
+    #[inline(always)]
     fn clear(&mut self, color: Self::Color) -> Result<(), S::Error> {
         self.strategy.clear(color)
     }
